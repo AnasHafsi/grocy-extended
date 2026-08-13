@@ -1,0 +1,28 @@
+services:
+  grocy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Alternative: build straight from your GitHub fork without cloning
+      # it locally first (Docker/Compose can use a git URL as the build
+      # context). Comment out "context: ." above and use this instead,
+      # pinned to whichever branch you consider stable:
+      # context: https://github.com/AnasHafsi/grocy-extended.git#master
+    container_name: grocy-extended
+    restart: unless-stopped
+    ports:
+      # host:container - change the host side if 9283 is already in use,
+      # or to match whatever port your current linuxserver/grocy setup uses
+      - "9283:80"
+    environment:
+      - GROCY_DATAPATH=/data
+    volumes:
+      # Point this at the SAME host directory your current linuxserver/grocy
+      # setup mounts (commonly its "/config" volume) to carry over your
+      # existing household data - the files inside (config.php, grocy.db,
+      # viewcache, plugins, storage, backups) are named identically
+      # regardless of which image produced them.
+      - grocy_data:/data
+
+volumes:
+  grocy_data:
