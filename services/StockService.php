@@ -123,6 +123,7 @@ class StockService extends BaseService
 		}
 
 		$productDetails = (object)$this->GetProductDetails($productId);
+		$brandToApply = $this->ResolveBrandForProduct($productId);
 
 		// Tare weight handling
 		// The given amount is the new total amount including the container weight (gross)
@@ -221,6 +222,7 @@ class StockService extends BaseService
 						'note' => $note
 					]);
 					$stockRow->save();
+					$this->ApplyBrandToStockRows($brandToApply, $logRow, $stockRow);
 
 					if (GROCY_FEATURE_FLAG_LABEL_PRINTER && GROCY_LABEL_PRINTER_RUN_SERVER)
 					{
@@ -274,6 +276,7 @@ class StockService extends BaseService
 					'note' => $note
 				]);
 				$stockRow->save();
+				$this->ApplyBrandToStockRows($brandToApply, $logRow, $stockRow);
 
 				if ($stockLabelType == 1 && GROCY_FEATURE_FLAG_LABEL_PRINTER && GROCY_LABEL_PRINTER_RUN_SERVER)
 				{
@@ -301,6 +304,42 @@ class StockService extends BaseService
 		else
 		{
 			throw new \Exception("Transaction type $transactionType is not valid (StockService.AddProduct)");
+		}
+	}
+
+	private function ResolveBrandForProduct(int $productId): ?string
+	{
+		$barcodes = $this->DB->product_barcodes()->where('product_id', $productId)->fetchAll();
+
+		$brands = [];
+		foreach ($barcodes as $barcode)
+		{
+			$value = UserfieldsService::GetInstance()->GetValues('product_barcodes', $barcode->id)['Brand'] ?? null;
+			if ($value !== null && $value !== '')
+			{
+				$brands[$value] = true;
+			}
+		}
+
+		// No barcode has a Brand set, or the product's barcodes disagree on Brand -> don't guess
+		return count($brands) === 1 ? array_key_first($brands) : null;
+	}
+
+	private function ApplyBrandToStockRows(?string $brand, $logRow, $stockRow): void
+	{
+		if ($brand === null)
+		{
+			return;
+		}
+
+		try
+		{
+			UserfieldsService::GetInstance()->SetValues('stock_log', $logRow->id, ['Brand' => $brand]);
+			UserfieldsService::GetInstance()->SetValues('stock', $stockRow->id, ['Brand' => $brand]);
+		}
+		catch (\Throwable $e)
+		{
+			error_log('Brand-sync failed for product ' . $stockRow->product_id . ': ' . $e->getMessage());
 		}
 	}
 
