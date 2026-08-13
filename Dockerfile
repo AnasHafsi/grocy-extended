@@ -1,8 +1,5 @@
 # syntax=docker/dockerfile:1
 #
-# Builds Grocy (this repo, grocy-extended) from source instead of pulling
-# a pre-built image like linuxserver/grocy.
-#
 # Three stages:
 #   1. composer_build - installs PHP dependencies (composer.json -> ./packages)
 #   2. yarn_build      - installs frontend dependencies (package.json -> ./public/packages,
@@ -16,8 +13,14 @@
 FROM php:8.5-cli AS composer_build
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-RUN apt-get update && apt-get install -y --no-install-recommends unzip git \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        unzip git \
+        libicu-dev libonig-dev \
+        libpng-dev libjpeg62-turbo-dev libwebp-dev libfreetype6-dev \
+    && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+    && docker-php-ext-install -j"$(nproc)" gd intl mbstring \
     && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /app
 COPY composer.json composer.lock ./
@@ -27,6 +30,9 @@ RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --opti
 # 2) Frontend dependencies (Yarn)
 ########################################################################
 FROM node:20-alpine AS yarn_build
+
+RUN apk add --no-cache git
+
 RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 
 WORKDIR /app
@@ -37,22 +43,16 @@ RUN yarn install
 # 3) Runtime image
 ########################################################################
 FROM php:8.5-apache
-
-# Required PHP extensions per helpers/PrerequisiteChecker.php.
-# ctype/fileinfo/filter/iconv/tokenizer/json/zlib ship built-in on the
-# official php images in practice; if the app's own PrerequisiteChecker
-# still complains about a missing one at first boot, add it here with
-# another `docker-php-ext-install <name>` line.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libsqlite3-dev libicu-dev libonig-dev zlib1g-dev \
         libpng-dev libjpeg62-turbo-dev libwebp-dev libfreetype6-dev \
+        libldap2-dev \
     && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
-    && docker-php-ext-install -j"$(nproc)" pdo_sqlite gd intl mbstring \
+    && docker-php-ext-configure ldap --with-libdir=lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH) \
+    && docker-php-ext-install -j"$(nproc)" pdo_sqlite gd intl mbstring ldap \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
-# public/.htaccess already handles the URL rewriting; Apache just needs
-# its document root pointed at public/ instead of the repo root.
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e "s!/var/www/html!\${APACHE_DOCUMENT_ROOT}!g" \
         /etc/apache2/sites-available/*.conf \
