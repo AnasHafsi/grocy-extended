@@ -41,6 +41,16 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=,format=short
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
+      - name: Write fork build info
+        run: |
+          cat > fork-build-info.json <<EOF
+          {
+            "sha": "${GITHUB_SHA::7}",
+            "ref": "${GITHUB_REF_NAME}",
+            "builtAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
