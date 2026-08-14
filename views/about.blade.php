@@ -43,8 +43,8 @@
 							@if($systemInfo['fork_build'])
 							<tr>
 								<td class="text-right">Fork build</td>
-								<td><code>{{ $systemInfo['fork_build']->ref }}@{{ $systemInfo['fork_build']->sha }}</code>
-									<span class="text-muted">built <time class="timeago timeago-contextual text-muted"
+								<td><code>{{ $systemInfo['fork_build']->ref }}</code> @ <code>{{ $systemInfo['fork_build']->sha }}</code>
+									<span class="text-muted">built <time id="fork-build-time" class="text-muted"
 											datetime="{{ $systemInfo['fork_build']->builtAt }}"></time></span></td>
 							</tr>
 							@endif
