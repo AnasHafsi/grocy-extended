@@ -408,6 +408,32 @@ if (Grocy.Components.ProductPicker !== undefined)
 											$("#note").val(barcode.note);
 										}
 
+										if (Grocy.Components.UserfieldsForm)
+										{
+											// product_barcodes_view doesn't embed userfields, unlike the base entity endpoint
+											Grocy.Api.Get('userfields/product_barcodes/' + barcode.id,
+												function (barcodeUserfields)
+												{
+													for (var fieldName in barcodeUserfields)
+													{
+														var fieldValue = barcodeUserfields[fieldName];
+														if (fieldValue !== null && fieldValue !== '')
+														{
+															var userfieldInput = $('#userfields-form .userfield-input[data-userfield-name="' + fieldName + '"]');
+															if (userfieldInput.length)
+															{
+																userfieldInput.val(fieldValue).addClass('is-dirty');
+															}
+														}
+													}
+												},
+												function (xhr)
+												{
+													console.error(xhr);
+												}
+											);
+										}
+
 										$(".input-group-productamountpicker").trigger("change");
 										Grocy.FrontendHelpers.ValidateForm('purchase-form');
 										RefreshLocaleNumberInput();
