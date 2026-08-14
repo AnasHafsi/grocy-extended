@@ -53,7 +53,7 @@ class StockService extends BaseService
 					'qu_id' => $product->qu_id_purchase
 				]);
 				$shoppinglistRow->save();
-				$this->SetBrandUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveBrandForProduct($missingProduct->id));
+				$this->ApplyTrackedFieldsUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveTrackedFieldsForProduct($missingProduct->id));
 			}
 		}
 	}
@@ -80,7 +80,7 @@ class StockService extends BaseService
 					'qu_id' => $product->qu_id_purchase
 				]);
 				$shoppinglistRow->save();
-				$this->SetBrandUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveBrandForProduct($overdueProduct->product_id));
+				$this->ApplyTrackedFieldsUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveTrackedFieldsForProduct($overdueProduct->product_id));
 			}
 		}
 	}
@@ -107,7 +107,7 @@ class StockService extends BaseService
 					'qu_id' => $product->qu_id_purchase
 				]);
 				$shoppinglistRow->save();
-				$this->SetBrandUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveBrandForProduct($expiredProduct->product_id));
+				$this->ApplyTrackedFieldsUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveTrackedFieldsForProduct($expiredProduct->product_id));
 			}
 		}
 	}
@@ -126,7 +126,7 @@ class StockService extends BaseService
 		}
 
 		$productDetails = (object)$this->GetProductDetails($productId);
-		$brandToApply = $this->ResolveBrandForProduct($productId);
+		$trackedFieldsToApply = $this->ResolveTrackedFieldsForProduct($productId);
 
 		// Tare weight handling
 		// The given amount is the new total amount including the container weight (gross)
@@ -225,7 +225,7 @@ class StockService extends BaseService
 						'note' => $note
 					]);
 					$stockRow->save();
-					$this->ApplyBrandToStockRows($brandToApply, $logRow, $transactionId);
+					$this->ApplyTrackedFieldsToStockRows($trackedFieldsToApply, $logRow, $transactionId);
 
 					if (GROCY_FEATURE_FLAG_LABEL_PRINTER && GROCY_LABEL_PRINTER_RUN_SERVER)
 					{
@@ -279,7 +279,7 @@ class StockService extends BaseService
 					'note' => $note
 				]);
 				$stockRow->save();
-				$this->ApplyBrandToStockRows($brandToApply, $logRow, $transactionId);
+				$this->ApplyTrackedFieldsToStockRows($trackedFieldsToApply, $logRow, $transactionId);
 
 				if ($stockLabelType == 1 && GROCY_FEATURE_FLAG_LABEL_PRINTER && GROCY_LABEL_PRINTER_RUN_SERVER)
 				{
@@ -310,49 +310,69 @@ class StockService extends BaseService
 		}
 	}
 
-	private function ResolveBrandForProduct(int $productId): ?string
+	// Per-barcode text fields that get auto-copied onto stock/stock_log/shopping_list from
+	// the product's barcode(s) (or the product's own default, if no barcode has one set).
+	private const TRACKED_BARCODE_USERFIELDS = ['Brand', 'Variant'];
+
+	private function ResolveTrackedFieldsForProduct(int $productId): array
 	{
 		$barcodes = $this->DB->product_barcodes()->where('product_id', $productId)->fetchAll();
 
-		$brands = [];
-		foreach ($barcodes as $barcode)
+		$resolved = [];
+		foreach (self::TRACKED_BARCODE_USERFIELDS as $fieldName)
 		{
-			$value = UserfieldsService::GetInstance()->GetValues('product_barcodes', $barcode->id)['Brand'] ?? null;
-			if ($value !== null && $value !== '')
+			$valuesSeen = [];
+			foreach ($barcodes as $barcode)
 			{
-				$brands[$value] = true;
+				$value = UserfieldsService::GetInstance()->GetValues('product_barcodes', $barcode->id)[$fieldName] ?? null;
+				if ($value !== null && $value !== '')
+				{
+					$valuesSeen[$value] = true;
+				}
+			}
+
+			if (count($valuesSeen) === 1)
+			{
+				$resolved[$fieldName] = array_key_first($valuesSeen);
+			}
+			elseif (count($valuesSeen) > 1)
+			{
+				// Barcodes disagree on this field -> don't guess
+				$resolved[$fieldName] = null;
+			}
+			else
+			{
+				// No barcode (or none with this field set) -> fall back to the product's own default
+				$productValue = UserfieldsService::GetInstance()->GetValues('products', $productId)[$fieldName] ?? null;
+				$resolved[$fieldName] = ($productValue !== null && $productValue !== '') ? $productValue : null;
 			}
 		}
 
-		if (count($brands) === 1)
-		{
-			return array_key_first($brands);
-		}
-		if (count($brands) > 1)
-		{
-			// Barcodes disagree on Brand -> don't guess
-			return null;
-		}
-
-		// No barcode (or none with a Brand set) -> fall back to the product's own default Brand
-		$productBrand = UserfieldsService::GetInstance()->GetValues('products', $productId)['Brand'] ?? null;
-		return ($productBrand !== null && $productBrand !== '') ? $productBrand : null;
+		return $resolved;
 	}
 
-	private function SetBrandUserfield(string $entity, $objectId, ?string $brand): void
+	private function SetTrackedUserfield(string $entity, $objectId, string $fieldName, ?string $value): void
 	{
-		if ($brand === null)
+		if ($value === null)
 		{
 			return;
 		}
 
 		try
 		{
-			UserfieldsService::GetInstance()->SetValues($entity, $objectId, ['Brand' => $brand]);
+			UserfieldsService::GetInstance()->SetValues($entity, $objectId, [$fieldName => $value]);
 		}
 		catch (\Throwable $e)
 		{
-			error_log("Brand-sync failed for $entity #$objectId: " . $e->getMessage());
+			error_log("$fieldName-sync failed for $entity #$objectId: " . $e->getMessage());
+		}
+	}
+
+	private function ApplyTrackedFieldsUserfield(string $entity, $objectId, array $resolvedFields): void
+	{
+		foreach ($resolvedFields as $fieldName => $value)
+		{
+			$this->SetTrackedUserfield($entity, $objectId, $fieldName, $value);
 		}
 	}
 
@@ -361,10 +381,10 @@ class StockService extends BaseService
 	// it rewrites the row to the correct stock_id-keyed row internally, and unconditionally
 	// deletes anything inserted under any other object_id. Only purchase/inventory-correction/
 	// stock-edit-new transactions are handled by that trigger.
-	private function ApplyBrandToStockRows(?string $brand, $logRow, string $transactionId): void
+	private function ApplyTrackedFieldsToStockRows(array $resolvedFields, $logRow, string $transactionId): void
 	{
-		$this->SetBrandUserfield('stock_log', $logRow->id, $brand);
-		$this->SetBrandUserfield('stock', $transactionId, $brand);
+		$this->ApplyTrackedFieldsUserfield('stock_log', $logRow->id, $resolvedFields);
+		$this->ApplyTrackedFieldsUserfield('stock', $transactionId, $resolvedFields);
 	}
 
 	public function AddProductToShoppingList($productId, $amount = 1, $quId = -1, $note = null, $listId = 1)
@@ -405,7 +425,7 @@ class StockService extends BaseService
 				'note' => $note
 			]);
 			$shoppinglistRow->save();
-			$this->SetBrandUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveBrandForProduct($productId));
+			$this->ApplyTrackedFieldsUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveTrackedFieldsForProduct($productId));
 		}
 	}
 
@@ -1349,7 +1369,7 @@ class StockService extends BaseService
 		// The given amount is the new total amount including the container weight (gross)
 		// The amount to be posted needs to be the absolute value of the given amount - stock amount - tare weight
 		$productDetails = (object)$this->GetProductDetails($productId);
-		$brandToApply = $this->ResolveBrandForProduct($productId);
+		$trackedFieldsToApply = $this->ResolveTrackedFieldsForProduct($productId);
 
 		if ($productDetails->product->enable_tare_weight_handling == 1)
 		{
@@ -1471,8 +1491,8 @@ class StockService extends BaseService
 					'note' => $stockEntry->note
 				]);
 				$logRowForLocationTo->save();
-				$this->SetBrandUserfield('stock_log', $logRowForLocationFrom->id, $brandToApply);
-				$this->SetBrandUserfield('stock_log', $logRowForLocationTo->id, $brandToApply);
+				$this->ApplyTrackedFieldsUserfield('stock_log', $logRowForLocationFrom->id, $trackedFieldsToApply);
+				$this->ApplyTrackedFieldsUserfield('stock_log', $logRowForLocationTo->id, $trackedFieldsToApply);
 
 				$stockEntry->update([
 					'location_id' => $locationIdTo,
@@ -1521,8 +1541,8 @@ class StockService extends BaseService
 					'note' => $stockEntry->note
 				]);
 				$logRowForLocationTo->save();
-				$this->SetBrandUserfield('stock_log', $logRowForLocationFrom->id, $brandToApply);
-				$this->SetBrandUserfield('stock_log', $logRowForLocationTo->id, $brandToApply);
+				$this->ApplyTrackedFieldsUserfield('stock_log', $logRowForLocationFrom->id, $trackedFieldsToApply);
+				$this->ApplyTrackedFieldsUserfield('stock_log', $logRowForLocationTo->id, $trackedFieldsToApply);
 
 				// This is the existing stock entry -> remains at the source location with the rest amount
 				$stockEntry->update([
@@ -1546,8 +1566,8 @@ class StockService extends BaseService
 				$stockEntryNew->save();
 				// Not set here: the 'stock' entity's userfield trigger only translates
 				// object_id for purchase/inventory-correction/stock-edit-new transactions
-				// (see ApplyBrandToStockRows) - transfer_to isn't in its allowlist, so
-				// there is currently no valid object_id that would make this stick.
+				// (see ApplyTrackedFieldsToStockRows) - transfer_to isn't in its allowlist,
+				// so there is currently no valid object_id that would make this stick.
 
 				$amount = 0;
 			}
