@@ -704,7 +704,7 @@ class StockService extends BaseService
 
 				// Add product to database and include new product id in output
 				$productData = $pluginOutput;
-				unset($productData['__barcode'], $productData['__qu_factor_purchase_to_stock'], $productData['__image_url'], $productData['__brand']); // Virtual lookup plugin properties
+				unset($productData['__barcode'], $productData['__qu_factor_purchase_to_stock'], $productData['__image_url'], $productData['__userfields']); // Virtual lookup plugin properties
 
 				// Download and save image if provided
 				if (isset($pluginOutput['__image_url']) && !empty($pluginOutput['__image_url']))
@@ -756,15 +756,17 @@ class StockService extends BaseService
 				]);
 				$newBarcodeRow->save();
 
-				if (!empty($pluginOutput['__brand']))
+				// Generic bucket: any plugin can propose barcode userfield values this way,
+				// not just the ones this core code happens to know about by name
+				if (!empty($pluginOutput['__userfields']))
 				{
 					try
 					{
-						UserfieldsService::GetInstance()->SetValues('product_barcodes', $newBarcodeRow->id, ['Brand' => $pluginOutput['__brand']]);
+						UserfieldsService::GetInstance()->SetValues('product_barcodes', $newBarcodeRow->id, $pluginOutput['__userfields']);
 					}
 					catch (\Throwable $e)
 					{
-						error_log('Brand-sync failed for new barcode ' . $pluginOutput['__barcode'] . ': ' . $e->getMessage());
+						error_log('Userfield sync failed for new barcode ' . $pluginOutput['__barcode'] . ': ' . $e->getMessage());
 					}
 				}
 
