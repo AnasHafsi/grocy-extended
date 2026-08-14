@@ -59,6 +59,22 @@ class ApplicationService extends BaseService
 		return $this->InstalledVersion;
 	}
 
+	// Written by the CI workflow at image build time (see .github/workflows/docker-publish.yml)
+	// so it's possible to tell which commit is actually running - version.json only tracks the
+	// last upstream release this fork is based on, not what's been changed since. Not present on
+	// local/dev builds outside CI, so this returns null rather than erroring.
+	public function GetForkBuildInfo()
+	{
+		$buildInfoFile = __DIR__ . '/../fork-build-info.json';
+
+		if (!file_exists($buildInfoFile))
+		{
+			return null;
+		}
+
+		return json_decode(file_get_contents($buildInfoFile));
+	}
+
 	public function GetSystemInfo()
 	{
 		$pdo = new \PDO('sqlite::memory:');
@@ -67,6 +83,7 @@ class ApplicationService extends BaseService
 
 		return [
 			'grocy_version' => $this->GetInstalledVersion(),
+			'fork_build' => $this->GetForkBuildInfo(),
 			'php_version' => phpversion(),
 			'sqlite_version' => $sqliteVersion,
 			'db_version' => $this->DB->migrations()->max('migration'),
