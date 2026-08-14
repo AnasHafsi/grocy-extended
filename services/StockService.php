@@ -704,7 +704,7 @@ class StockService extends BaseService
 
 				// Add product to database and include new product id in output
 				$productData = $pluginOutput;
-				unset($productData['__barcode'], $productData['__qu_factor_purchase_to_stock'], $productData['__image_url']); // Virtual lookup plugin properties
+				unset($productData['__barcode'], $productData['__qu_factor_purchase_to_stock'], $productData['__image_url'], $productData['__brand']); // Virtual lookup plugin properties
 
 				// Download and save image if provided
 				if (isset($pluginOutput['__image_url']) && !empty($pluginOutput['__image_url']))
@@ -750,10 +750,23 @@ class StockService extends BaseService
 				$newProductRow = $this->DB->products()->createRow($productData);
 				$newProductRow->save();
 
-				$this->DB->product_barcodes()->createRow([
+				$newBarcodeRow = $this->DB->product_barcodes()->createRow([
 					'product_id' => $newProductRow->id,
 					'barcode' => $pluginOutput['__barcode']
-				])->save();
+				]);
+				$newBarcodeRow->save();
+
+				if (!empty($pluginOutput['__brand']))
+				{
+					try
+					{
+						UserfieldsService::GetInstance()->SetValues('product_barcodes', $newBarcodeRow->id, ['Brand' => $pluginOutput['__brand']]);
+					}
+					catch (\Throwable $e)
+					{
+						error_log('Brand-sync failed for new barcode ' . $pluginOutput['__barcode'] . ': ' . $e->getMessage());
+					}
+				}
 
 				if ($pluginOutput['qu_id_stock'] != $pluginOutput['qu_id_purchase'])
 				{
