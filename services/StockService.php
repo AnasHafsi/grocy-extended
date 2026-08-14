@@ -53,6 +53,7 @@ class StockService extends BaseService
 					'qu_id' => $product->qu_id_purchase
 				]);
 				$shoppinglistRow->save();
+				$this->SetBrandUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveBrandForProduct($missingProduct->id));
 			}
 		}
 	}
@@ -79,6 +80,7 @@ class StockService extends BaseService
 					'qu_id' => $product->qu_id_purchase
 				]);
 				$shoppinglistRow->save();
+				$this->SetBrandUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveBrandForProduct($overdueProduct->product_id));
 			}
 		}
 	}
@@ -105,6 +107,7 @@ class StockService extends BaseService
 					'qu_id' => $product->qu_id_purchase
 				]);
 				$shoppinglistRow->save();
+				$this->SetBrandUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveBrandForProduct($expiredProduct->product_id));
 			}
 		}
 	}
@@ -321,11 +324,22 @@ class StockService extends BaseService
 			}
 		}
 
-		// No barcode has a Brand set, or the product's barcodes disagree on Brand -> don't guess
-		return count($brands) === 1 ? array_key_first($brands) : null;
+		if (count($brands) === 1)
+		{
+			return array_key_first($brands);
+		}
+		if (count($brands) > 1)
+		{
+			// Barcodes disagree on Brand -> don't guess
+			return null;
+		}
+
+		// No barcode (or none with a Brand set) -> fall back to the product's own default Brand
+		$productBrand = UserfieldsService::GetInstance()->GetValues('products', $productId)['Brand'] ?? null;
+		return ($productBrand !== null && $productBrand !== '') ? $productBrand : null;
 	}
 
-	private function ApplyBrandToStockRows(?string $brand, $logRow, $stockRow): void
+	private function SetBrandUserfield(string $entity, $objectId, ?string $brand): void
 	{
 		if ($brand === null)
 		{
@@ -334,13 +348,18 @@ class StockService extends BaseService
 
 		try
 		{
-			UserfieldsService::GetInstance()->SetValues('stock_log', $logRow->id, ['Brand' => $brand]);
-			UserfieldsService::GetInstance()->SetValues('stock', $stockRow->id, ['Brand' => $brand]);
+			UserfieldsService::GetInstance()->SetValues($entity, $objectId, ['Brand' => $brand]);
 		}
 		catch (\Throwable $e)
 		{
-			error_log('Brand-sync failed for product ' . $stockRow->product_id . ': ' . $e->getMessage());
+			error_log("Brand-sync failed for $entity #$objectId: " . $e->getMessage());
 		}
+	}
+
+	private function ApplyBrandToStockRows(?string $brand, $logRow, $stockRow): void
+	{
+		$this->SetBrandUserfield('stock_log', $logRow->id, $brand);
+		$this->SetBrandUserfield('stock', $stockRow->id, $brand);
 	}
 
 	public function AddProductToShoppingList($productId, $amount = 1, $quId = -1, $note = null, $listId = 1)
@@ -381,6 +400,7 @@ class StockService extends BaseService
 				'note' => $note
 			]);
 			$shoppinglistRow->save();
+			$this->SetBrandUserfield('shopping_list', $shoppinglistRow->id, $this->ResolveBrandForProduct($productId));
 		}
 	}
 
