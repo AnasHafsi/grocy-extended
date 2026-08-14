@@ -787,6 +787,25 @@ class StockService extends BaseService
 		return array_column($currentStockMapped, 0);
 	}
 
+	// Per-product breakdown of current stock by Variant, e.g. for a product with two
+	// batches tagged "Salato"/"Dolce": [productId => [{variant: 'Salato', amount: 2}, {variant: 'Dolce', amount: 1}]].
+	// Stock Overview is one row per product (uihelper_stock_current_overview only reads
+	// the 'products' entity's own userfields), so this is a separate query - it's the only
+	// way to surface the per-batch 'stock' entity Variant value there. Joins on stock_id
+	// (not stock.id) because that's how the 'stock' entity's userfields are actually keyed,
+	// see ApplyTrackedFieldsToStockRows's comment on the underlying DB trigger.
+	public function GetCurrentStockVariantBreakdown()
+	{
+		$sql = "SELECT s.product_id, uv.value AS variant, SUM(s.amount) AS amount
+			FROM stock s
+			JOIN userfield_values uv ON uv.object_id = s.stock_id
+			JOIN userfields uf ON uf.id = uv.field_id
+			WHERE uf.entity = 'stock' AND uf.name = 'Variant' AND uv.value != '' AND s.amount > 0
+			GROUP BY s.product_id, uv.value
+			ORDER BY s.product_id, uv.value";
+		return DatabaseService::GetInstance()->ExecuteDbQuery($sql)->fetchAll(\PDO::FETCH_GROUP | \PDO::FETCH_OBJ);
+	}
+
 	public function GetCurrentStockLocationContent($includeOutOfStockProductsAtTheDefaultLocation = false)
 	{
 		$leftJoin = '';

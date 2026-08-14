@@ -184,6 +184,7 @@
 					<th>{{ $__t('Product picture') }}</th>
 					<th class="@if(!GROCY_FEATURE_FLAG_STOCK_PRICE_TRACKING) d-none @endif">{{ $__t('Average price') }}</th>
 					<th class="@if(!GROCY_FEATURE_FLAG_STOCK_PRICE_TRACKING) d-none @endif allow-grouping">{{ $__t('Default store') }}</th>
+					<th>{{ $__t('Variants in stock') }}</th>
 
 					@include('components.userfields_thead', array(
 					'userfields' => $userfields
@@ -457,6 +458,13 @@
 					</td>
 					<td>
 						@if($currentStockEntry->default_store_name !== null){{ $currentStockEntry->default_store_name }}@endif
+					</td>
+					<td>
+						@if(isset($variantBreakdown[$currentStockEntry->product_id]))
+						@foreach($variantBreakdown[$currentStockEntry->product_id] as $variantRow)
+						{{ $variantRow->variant }}: {{ $variantRow->amount }}@if(!$loop->last), @endif
+						@endforeach
+						@endif
 					</td>
 
 					@include('components.userfields_tbody', array(
