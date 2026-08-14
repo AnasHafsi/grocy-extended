@@ -1344,6 +1344,7 @@ class StockService extends BaseService
 		// The given amount is the new total amount including the container weight (gross)
 		// The amount to be posted needs to be the absolute value of the given amount - stock amount - tare weight
 		$productDetails = (object)$this->GetProductDetails($productId);
+		$brandToApply = $this->ResolveBrandForProduct($productId);
 
 		if ($productDetails->product->enable_tare_weight_handling == 1)
 		{
@@ -1465,6 +1466,8 @@ class StockService extends BaseService
 					'note' => $stockEntry->note
 				]);
 				$logRowForLocationTo->save();
+				$this->SetBrandUserfield('stock_log', $logRowForLocationFrom->id, $brandToApply);
+				$this->SetBrandUserfield('stock_log', $logRowForLocationTo->id, $brandToApply);
 
 				$stockEntry->update([
 					'location_id' => $locationIdTo,
@@ -1513,6 +1516,8 @@ class StockService extends BaseService
 					'note' => $stockEntry->note
 				]);
 				$logRowForLocationTo->save();
+				$this->SetBrandUserfield('stock_log', $logRowForLocationFrom->id, $brandToApply);
+				$this->SetBrandUserfield('stock_log', $logRowForLocationTo->id, $brandToApply);
 
 				// This is the existing stock entry -> remains at the source location with the rest amount
 				$stockEntry->update([
@@ -1534,6 +1539,7 @@ class StockService extends BaseService
 					'note' => $stockEntry->note
 				]);
 				$stockEntryNew->save();
+				$this->SetBrandUserfield('stock', $stockEntryNew->id, $brandToApply);
 
 				$amount = 0;
 			}
