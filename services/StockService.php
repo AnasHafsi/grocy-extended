@@ -310,16 +310,13 @@ class StockService extends BaseService
 		}
 	}
 
-	// Per-barcode text fields that get auto-copied onto stock/stock_log/shopping_list from
-	// the product's barcode(s) (or the product's own default, if no barcode has one set).
-	private const TRACKED_BARCODE_USERFIELDS = ['Brand', 'Variant'];
-
 	private function ResolveTrackedFieldsForProduct(int $productId): array
 	{
 		$barcodes = $this->DB->product_barcodes()->where('product_id', $productId)->fetchAll();
 
+		// Configured in config.php (GROCY_TRACKED_BARCODE_USERFIELDS, default in config-dist.php)
 		$resolved = [];
-		foreach (self::TRACKED_BARCODE_USERFIELDS as $fieldName)
+		foreach (GROCY_TRACKED_BARCODE_USERFIELDS as $fieldName)
 		{
 			$valuesSeen = [];
 			foreach ($barcodes as $barcode)
