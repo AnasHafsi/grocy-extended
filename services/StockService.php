@@ -225,7 +225,7 @@ class StockService extends BaseService
 						'note' => $note
 					]);
 					$stockRow->save();
-					$this->ApplyBrandToStockRows($brandToApply, $logRow, $stockRow);
+					$this->ApplyBrandToStockRows($brandToApply, $logRow, $transactionId);
 
 					if (GROCY_FEATURE_FLAG_LABEL_PRINTER && GROCY_LABEL_PRINTER_RUN_SERVER)
 					{
@@ -279,7 +279,7 @@ class StockService extends BaseService
 					'note' => $note
 				]);
 				$stockRow->save();
-				$this->ApplyBrandToStockRows($brandToApply, $logRow, $stockRow);
+				$this->ApplyBrandToStockRows($brandToApply, $logRow, $transactionId);
 
 				if ($stockLabelType == 1 && GROCY_FEATURE_FLAG_LABEL_PRINTER && GROCY_LABEL_PRINTER_RUN_SERVER)
 				{
@@ -356,10 +356,15 @@ class StockService extends BaseService
 		}
 	}
 
-	private function ApplyBrandToStockRows(?string $brand, $logRow, $stockRow): void
+	// The 'stock' entity is special: a DB trigger (userfield_values_special_handling_INS)
+	// requires object_id to be the transaction_id on insert, not the stock row's own id -
+	// it rewrites the row to the correct stock_id-keyed row internally, and unconditionally
+	// deletes anything inserted under any other object_id. Only purchase/inventory-correction/
+	// stock-edit-new transactions are handled by that trigger.
+	private function ApplyBrandToStockRows(?string $brand, $logRow, string $transactionId): void
 	{
 		$this->SetBrandUserfield('stock_log', $logRow->id, $brand);
-		$this->SetBrandUserfield('stock', $stockRow->id, $brand);
+		$this->SetBrandUserfield('stock', $transactionId, $brand);
 	}
 
 	public function AddProductToShoppingList($productId, $amount = 1, $quId = -1, $note = null, $listId = 1)
@@ -1539,7 +1544,10 @@ class StockService extends BaseService
 					'note' => $stockEntry->note
 				]);
 				$stockEntryNew->save();
-				$this->SetBrandUserfield('stock', $stockEntryNew->id, $brandToApply);
+				// Not set here: the 'stock' entity's userfield trigger only translates
+				// object_id for purchase/inventory-correction/stock-edit-new transactions
+				// (see ApplyBrandToStockRows) - transfer_to isn't in its allowlist, so
+				// there is currently no valid object_id that would make this stick.
 
 				$amount = 0;
 			}
