@@ -112,6 +112,14 @@ Setting('DEFAULT_PERMISSIONS', ['ADMIN']);
 // "1D" (=> Code128) or "2D" (=> DataMatrix)
 Setting('GROCYCODE_TYPE', '2D');
 
+// Per-barcode text userfields (e.g. Brand, Variant) that get auto-copied onto
+// stock/stock_log/shopping_list from a product's barcode(s), or its own default
+// if no barcode has one set. Override in your own config.php to add/remove fields -
+// the userfield itself (text-single-line) must also exist on the relevant entities
+// (product_barcodes, stock, stock_log, products, shopping_list), either via
+// Settings > Manage user fields or the API.
+Setting('TRACKED_BARCODE_USERFIELDS', ['Brand', 'Variant']);
+
 
 // Label printer settings
 Setting('LABEL_PRINTER_WEBHOOK', ''); // The URI that Grocy will POST to when asked to print a label
