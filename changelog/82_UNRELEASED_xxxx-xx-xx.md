@@ -1,8 +1,4 @@
-> ⚠️ xxxBREAKING CHANGESxxx
-
-> ❗ xxxImportant upgrade informationXXX
-
-> 💡 xxxMinor upgrade informationXXX
+> ⚠️ Authentication middleware was reorganized, review your `AUTH_CLASS` setting (see the default reference in `config-dist.php` as usual)
 
 ### New Feature: xxxx
 
@@ -19,11 +15,13 @@
 - Fixed that the status filter on the master data products page always displayed "All" after selection (only affected Chrome/Edge)
 - Fixed that the "This means _n QU_ will be removed/added from stock"-hint on the inventory page wasn't updated when changing the quantity unit only
 - Fixed that the product open button on the stock overview page wasn't disabled after opening the last unit
+- Fixed that when changing a product name to one that already exists, no corresponding error message was shown on the product edit page
 
 ### Shopping list
 
 - Fixed that the shopping list setting (top right corner settings menu) "Round up quantity amounts to the nearest whole number" wasn't applied to shopping list item amounts where a quantity unit conversion was involved
 - Fixed that printing the shopping list with "Group by product group" enabled created duplicated product group headlines in some cases
+- Fixed that the total value at the top of the shopping list page wasn't updated after removing a shopping list item
 
 ### Recipes
 
@@ -35,7 +33,7 @@
 
 ### Chores
 
-- xxx
+- Fixed that when tracking a chore via the context/more menu on the chores overview page, the chore name was missing in the confirmation popup
 
 ### Calendar
 
