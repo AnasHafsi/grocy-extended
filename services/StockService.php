@@ -373,6 +373,22 @@ class StockService extends BaseService
 		}
 	}
 
+	// Same as ApplyTrackedFieldsUserfield, but skips any field that's already set on the
+	// object - used where a row may have been updated rather than freshly inserted, so a
+	// value a user already set (or that a prior insert already resolved) is never clobbered.
+	private function ApplyTrackedFieldsUserfieldIfUnset(string $entity, $objectId, array $resolvedFields): void
+	{
+		$existingValues = UserfieldsService::GetInstance()->GetValues($entity, $objectId);
+		foreach ($resolvedFields as $fieldName => $value)
+		{
+			$existingValue = $existingValues[$fieldName] ?? null;
+			if ($existingValue === null || $existingValue === '')
+			{
+				$this->SetTrackedUserfield($entity, $objectId, $fieldName, $value);
+			}
+		}
+	}
+
 	// The 'stock' entity is special: a DB trigger (userfield_values_special_handling_INS)
 	// requires object_id to be the transaction_id on insert, not the stock row's own id -
 	// it rewrites the row to the correct stock_id-keyed row internally, and unconditionally
@@ -410,6 +426,7 @@ class StockService extends BaseService
 				'shopping_list_id' => $listId,
 				'note' => $note
 			]);
+			$this->ApplyTrackedFieldsUserfieldIfUnset('shopping_list', $alreadyExistingEntry->id, $this->ResolveTrackedFieldsForProduct($productId));
 		}
 		else
 		{
