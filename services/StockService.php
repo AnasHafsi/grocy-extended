@@ -828,6 +828,15 @@ class StockService extends BaseService
 	// see ApplyTrackedFieldsToStockRows's comment on the underlying DB trigger.
 	public function GetCurrentStockVariantBreakdown()
 	{
+		// Hardcoded to the 'Variant' field name (that's this feature's whole purpose), but
+		// gated on it actually being a tracked field - if an instance's config.php drops
+		// 'Variant' from GROCY_TRACKED_BARCODE_USERFIELDS, this returns empty instead of a
+		// column that looks broken (populated once, frozen, never updated again).
+		if (!in_array('Variant', GROCY_TRACKED_BARCODE_USERFIELDS, true))
+		{
+			return [];
+		}
+
 		$sql = "SELECT s.product_id, uv.value AS variant, SUM(s.amount) AS amount
 			FROM stock s
 			JOIN userfield_values uv ON uv.object_id = s.stock_id
