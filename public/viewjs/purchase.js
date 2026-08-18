@@ -411,6 +411,9 @@ if (Grocy.Components.ProductPicker !== undefined)
 										if (Grocy.Components.UserfieldsForm)
 										{
 											// product_barcodes_view doesn't embed userfields, unlike the base entity endpoint
+											// Scan mode submits as soon as this resolves (success or error) - waiting here is
+											// what makes the prefilled Brand/Variant actually make it into the submitted purchase,
+											// instead of ScanModeSubmit firing before this AJAX call has a chance to land.
 											Grocy.Api.Get('userfields/product_barcodes/' + barcode.id,
 												function (barcodeUserfields)
 												{
@@ -426,21 +429,29 @@ if (Grocy.Components.ProductPicker !== undefined)
 															}
 														}
 													}
+													ScanModeSubmit(false);
 												},
 												function (xhr)
 												{
 													console.error(xhr);
+													ScanModeSubmit(false);
 												}
 											);
+										}
+										else
+										{
+											ScanModeSubmit(false);
 										}
 
 										$(".input-group-productamountpicker").trigger("change");
 										Grocy.FrontendHelpers.ValidateForm('purchase-form');
 										RefreshLocaleNumberInput();
 									}
+									else
+									{
+										ScanModeSubmit(false);
+									}
 								}
-
-								ScanModeSubmit(false);
 							},
 							function (xhr)
 							{
