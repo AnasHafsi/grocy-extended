@@ -423,6 +423,20 @@ $(document).on("Grocy.BarcodeScanned", function (e, barcode, target)
 
 	Grocy.Components.ProductPicker.GetInputElement().val(barcode);
 
+	// bootstrap-combobox also defaults to clearIfNoMatch:true - its OWN blur handler
+	// (re-bound inside hide(), above) wipes $element's value back to '' on blur whenever
+	// `!this.selected`, since from the library's perspective nothing was ever picked from
+	// its dropdown (we set .val() directly here, never through its own item-click path).
+	// That wipe was happening before Grocy's own blur handler below got a chance to read
+	// the barcode - confirmed by instrumenting both with console.log during debugging,
+	// input was consistently '' by the time our handler ran despite being set correctly
+	// right before. Mark this as a valid "selection" the same way the library does
+	// internally for a real dropdown click, so its own blur handler leaves it alone.
+	if (comboboxInstance)
+	{
+		comboboxInstance.selected = true;
+	}
+
 	setTimeout(function ()
 	{
 		Grocy.Components.ProductPicker.GetInputElement().focusout();
