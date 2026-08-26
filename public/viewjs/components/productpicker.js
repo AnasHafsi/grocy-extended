@@ -401,6 +401,21 @@ $(document).on("Grocy.BarcodeScanned", function (e, barcode, target)
 		return;
 	}
 
+	// The bootstrap-combobox widget only removes its "combobox-menu-visible" class inside
+	// its own blur handler, deferred via setTimeout(..., 200) - see bootstrap-combobox.js's
+	// `hide()`. Our own blur handler below (bound to the same input) checks that class
+	// synchronously to decide whether to skip barcode matching entirely (so a real click
+	// into the dropdown doesn't get treated as a lookup). Faking blur/focus/blur back-to-back
+	// like this, with no natural pause for that 200ms timeout to have already fired, meant
+	// the class was still present every time - silently skipping the whole barcode lookup,
+	// no API call, no error, nothing. Force-hide the dropdown synchronously first so that
+	// guard can never incorrectly trip for a scanned barcode.
+	var comboboxInstance = Grocy.Components.ProductPicker.GetPicker().data("combobox");
+	if (comboboxInstance)
+	{
+		comboboxInstance.hide();
+	}
+
 	// Don't know why the blur event does not fire immediately ... this works...
 	Grocy.Components.ProductPicker.GetInputElement().focusout();
 	Grocy.Components.ProductPicker.GetInputElement().focus();
