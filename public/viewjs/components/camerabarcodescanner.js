@@ -133,6 +133,13 @@ Grocy.Components.CameraBarcodeScanner.TorchToggle = function(track)
 					torch: Grocy.Components.CameraBarcodeScanner.TorchIsOn
 				}
 			]
+		}).catch(() =>
+		{
+			// Not every camera/browser supports a torch constraint (e.g. desktop webcams,
+			// some phone camera modes) - applyConstraints then rejects with
+			// OverconstrainedError. This is expected and not actionable, so just don't
+			// leave it as an unhandled rejection cluttering the console.
+			Grocy.Components.CameraBarcodeScanner.TorchIsOn = !Grocy.Components.CameraBarcodeScanner.TorchIsOn;
 		});
 	}
 }
