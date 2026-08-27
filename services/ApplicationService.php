@@ -49,6 +49,11 @@ class ApplicationService extends BaseService
 		];
 	}
 
+	public function GetForkChangelog()
+	{
+		return file_get_contents(__DIR__ . '/../fork-changelog.md');
+	}
+
 	public function GetInstalledVersion()
 	{
 		if ($this->InstalledVersion == null)

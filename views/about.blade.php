@@ -6,6 +6,7 @@
 <div class="row">
 	<div class="col text-center">
 		<h2 class="title">@yield('title')</h2>
+		<p class="small text-muted mb-0">This is a patched fork of Grocy (automatic Brand/Variant tracking from barcodes).</p>
 
 		<hr class="my-2">
 
@@ -22,9 +23,16 @@
 					data-toggle="tab"
 					href="#changelog">{{ $__t('Changelog') }}</a>
 			</li>
+			<li class="nav-item">
+				<a class="nav-link discrete-link"
+					id="fork-changelog-tab"
+					data-toggle="tab"
+					href="#fork-changelog">Fork changelog</a>
+			</li>
 		</ul>
 
 		<div class="tab-content grocy-tabs mt-3">
+			@php $Parsedown = new Parsedown(); @endphp
 
 			<div class="tab-pane show active"
 				id="system-info">
@@ -82,7 +90,6 @@
 
 			<div class="tab-pane show"
 				id="changelog">
-				@php $Parsedown = new Parsedown(); @endphp
 				@foreach($changelog['changelog_items'] as $changelogItem)
 				<div class="card my-2">
 					<div class="card-header">
@@ -104,6 +111,15 @@
 				@endforeach
 			</div>
 
+			<div class="tab-pane show"
+				id="fork-changelog">
+				<div class="card my-2">
+					<div class="card-body text-left">
+						{!! $Parsedown->text($forkChangelog) !!}
+					</div>
+				</div>
+			</div>
+
 		</div>
 
 		<p class="small text-muted border-top pt-3">
@@ -115,6 +131,10 @@
 				target="_blank">Bernd Bestel</a><br>
 			Created with passion since 2017<br>
 			Life runs on Code<br>
+			This fork is patched by
+			<a href="https://github.com/AnasHafsi/grocy-extended"
+				class="text-dark"
+				target="_blank">Anas Hafsi</a>
 		</p>
 	</div>
 </div>
