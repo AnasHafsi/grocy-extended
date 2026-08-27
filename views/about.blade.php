@@ -131,6 +131,10 @@
 				target="_blank">Bernd Bestel</a><br>
 			Created with passion since 2017<br>
 			Life runs on Code<br>
+			This fork is patched by
+			<a href="https://github.com/AnasHafsi/grocy-extended"
+				class="text-dark"
+				target="_blank">Anas Hafsi</a>
 		</p>
 	</div>
 </div>
