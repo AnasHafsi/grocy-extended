@@ -23,9 +23,16 @@
 					data-toggle="tab"
 					href="#changelog">{{ $__t('Changelog') }}</a>
 			</li>
+			<li class="nav-item">
+				<a class="nav-link discrete-link"
+					id="fork-changelog-tab"
+					data-toggle="tab"
+					href="#fork-changelog">Fork changelog</a>
+			</li>
 		</ul>
 
 		<div class="tab-content grocy-tabs mt-3">
+			@php $Parsedown = new Parsedown(); @endphp
 
 			<div class="tab-pane show active"
 				id="system-info">
@@ -83,7 +90,6 @@
 
 			<div class="tab-pane show"
 				id="changelog">
-				@php $Parsedown = new Parsedown(); @endphp
 				@foreach($changelog['changelog_items'] as $changelogItem)
 				<div class="card my-2">
 					<div class="card-header">
@@ -103,6 +109,15 @@
 					</div>
 				</div>
 				@endforeach
+			</div>
+
+			<div class="tab-pane show"
+				id="fork-changelog">
+				<div class="card my-2">
+					<div class="card-body text-left">
+						{!! $Parsedown->text($forkChangelog) !!}
+					</div>
+				</div>
 			</div>
 
 		</div>

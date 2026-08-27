@@ -15,7 +15,8 @@ class SystemController extends BaseController
 		return $this->RenderPage($response, 'about', [
 			'systemInfo' => ApplicationService::GetInstance()->GetSystemInfo(),
 			'versionInfo' => ApplicationService::GetInstance()->GetInstalledVersion(),
-			'changelog' => ApplicationService::GetInstance()->GetChangelog()
+			'changelog' => ApplicationService::GetInstance()->GetChangelog(),
+			'forkChangelog' => ApplicationService::GetInstance()->GetForkChangelog()
 		]);
 	}
 
