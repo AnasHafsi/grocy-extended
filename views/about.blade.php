@@ -6,6 +6,7 @@
 <div class="row">
 	<div class="col text-center">
 		<h2 class="title">@yield('title')</h2>
+		<p class="small text-muted mb-0">This is a patched fork of Grocy (automatic Brand/Variant tracking from barcodes).</p>
 
 		<hr class="my-2">
 
