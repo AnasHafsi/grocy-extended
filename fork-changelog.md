@@ -1,5 +1,7 @@
-### Unreleased
+### v1.0.0 (2026-08-27)
+- First tagged release of the fork, based on upstream Grocy 4.6.0
 - Added a note on the About page that this is the patched fork, plus this Fork changelog tab (#15)
+- Credited the fork maintainer in the About page footer (#15)
 
 ### 2026-08-26
 - Fixed: barcode scan was silently doing nothing on the Purchase page (#14)
