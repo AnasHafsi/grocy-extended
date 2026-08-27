@@ -6,5 +6,3 @@ data
 packages
 public/packages
 node_modules
-*.md
-changelog
