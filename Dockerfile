@@ -53,6 +53,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && a2enmod rewrite \
     && rm -rf /var/lib/apt/lists/*
 
+# Hardening for PHP2Shell (CVE-2026-109619): upload progress tracking is a confirmed
+# path to the bug and is unused by Grocy. Must be set in ini, not at runtime.
+RUN echo 'session.upload_progress.enabled=0' > /usr/local/etc/php/conf.d/zz-hardening.ini
+
 ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e "s!/var/www/html!\${APACHE_DOCUMENT_ROOT}!g" \
         /etc/apache2/sites-available/*.conf \
